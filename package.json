@@ -1,0 +1,14 @@
+{
+  "name": "dictaphone-hl7",
+  "version": "1.0.0",
+  "description": "Clinical dictaphone with HL7 transmission to HIS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "net": "*"
+  }
+}

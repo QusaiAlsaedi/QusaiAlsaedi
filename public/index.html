@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinical Dictaphone &mdash; HL7</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #d97706;
+      --info: #0891b2;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header svg { width: 28px; height: 28px; fill: white; }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+
+    .container {
+      max-width: 960px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* --- Patient Info --- */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+    }
+
+    /* --- Dictaphone Controls --- */
+    .dictaphone-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn svg { width: 18px; height: 18px; }
+
+    .btn-record { background: var(--danger); color: white; }
+    .btn-record:hover:not(:disabled) { background: #b91c1c; }
+    .btn-stop { background: var(--muted); color: white; }
+    .btn-stop:hover:not(:disabled) { background: #475569; }
+    .btn-clear { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-clear:hover:not(:disabled) { background: var(--bg); }
+
+    .recording-indicator {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      color: var(--danger);
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+    .recording-indicator.active { display: flex; }
+    .rec-dot {
+      width: 10px; height: 10px;
+      background: var(--danger);
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* --- Transcription Area --- */
+    #transcription {
+      width: 100%;
+      min-height: 180px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-family: inherit;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    /* --- Report Status Buttons --- */
+    .status-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .status-btn {
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 20px;
+      cursor: pointer;
+      background: var(--bg);
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .status-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .status-btn.selected { color: white; }
+    .status-btn[data-status="draft"].selected       { background: var(--warning); border-color: var(--warning); }
+    .status-btn[data-status="preliminary"].selected  { background: var(--info); border-color: var(--info); }
+    .status-btn[data-status="final"].selected        { background: var(--success); border-color: var(--success); }
+    .status-btn[data-status="addendum"].selected     { background: #7c3aed; border-color: #7c3aed; }
+
+    /* --- Send / HL7 Preview --- */
+    .actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn-send { background: var(--success); color: white; }
+    .btn-send:hover:not(:disabled) { background: #15803d; }
+    .btn-preview { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+    .btn-preview:hover:not(:disabled) { background: #eff6ff; }
+
+    #hl7-preview {
+      display: none;
+      width: 100%;
+      min-height: 120px;
+      padding: 12px;
+      background: #1e293b;
+      color: #a5f3fc;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      border-radius: var(--radius);
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 12px;
+      overflow-x: auto;
+    }
+
+    /* --- Log --- */
+    #log {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    #log .entry { padding: 4px 0; border-bottom: 1px solid var(--border); }
+    #log .entry:last-child { border-bottom: none; }
+    .entry .time { color: var(--muted); margin-right: 6px; }
+    .entry.ok { color: var(--success); }
+    .entry.err { color: var(--danger); }
+
+    /* --- HL7 Config --- */
+    .config-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .config-row .form-group { flex: 1; min-width: 140px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2z"/></svg>
+  <h1>Clinical Dictaphone &mdash; HL7 Transmitter</h1>
+</header>
+
+<div class="container">
+
+  <!-- Patient Info -->
+  <div class="card">
+    <h2>Patient Information</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="patId">Patient ID (MRN)</label>
+        <input id="patId" placeholder="e.g. 123456" />
+      </div>
+      <div class="form-group">
+        <label for="patFirst">First Name</label>
+        <input id="patFirst" placeholder="First" />
+      </div>
+      <div class="form-group">
+        <label for="patLast">Last Name</label>
+        <input id="patLast" placeholder="Last" />
+      </div>
+      <div class="form-group">
+        <label for="patDob">Date of Birth</label>
+        <input id="patDob" type="date" />
+      </div>
+      <div class="form-group">
+        <label for="patGender">Gender</label>
+        <select id="patGender">
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+          <option value="O">Other</option>
+          <option value="U">Unknown</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visit / Provider Info -->
+  <div class="card">
+    <h2>Visit / Provider</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="visitClass">Patient Class</label>
+        <select id="visitClass">
+          <option value="O">Outpatient</option>
+          <option value="I">Inpatient</option>
+          <option value="E">Emergency</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="visitLocation">Location / Ward</label>
+        <input id="visitLocation" placeholder="e.g. WARD-3A" />
+      </div>
+      <div class="form-group">
+        <label for="drId">Attending ID</label>
+        <input id="drId" placeholder="e.g. DR001" />
+      </div>
+      <div class="form-group">
+        <label for="drFirst">Attending First Name</label>
+        <input id="drFirst" placeholder="First" />
+      </div>
+      <div class="form-group">
+        <label for="drLast">Attending Last Name</label>
+        <input id="drLast" placeholder="Last" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Dictaphone -->
+  <div class="card">
+    <h2>Dictation</h2>
+    <div class="dictaphone-controls">
+      <button class="btn btn-record" id="btnRecord">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+        Record
+      </button>
+      <button class="btn btn-stop" id="btnStop" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        Stop
+      </button>
+      <button class="btn btn-clear" id="btnClear">Clear</button>
+      <div class="recording-indicator" id="recIndicator">
+        <span class="rec-dot"></span> Recording&hellip;
+      </div>
+    </div>
+    <br />
+    <textarea id="transcription" placeholder="Dictated text will appear here. You can also type or edit manually."></textarea>
+  </div>
+
+  <!-- Report Status -->
+  <div class="card">
+    <h2>Report Status</h2>
+    <div class="status-bar" id="statusBar">
+      <button class="status-btn" data-status="draft">Draft</button>
+      <button class="status-btn" data-status="preliminary">Preliminary</button>
+      <button class="status-btn selected" data-status="final">Final</button>
+      <button class="status-btn" data-status="addendum">Addendum</button>
+    </div>
+  </div>
+
+  <!-- HL7 Config + Send -->
+  <div class="card">
+    <h2>HL7 Destination</h2>
+    <div class="config-row">
+      <div class="form-group">
+        <label for="hl7Host">HIS Host</label>
+        <input id="hl7Host" placeholder="e.g. 192.168.1.100" value="127.0.0.1" />
+      </div>
+      <div class="form-group">
+        <label for="hl7Port">MLLP Port</label>
+        <input id="hl7Port" type="number" placeholder="e.g. 2575" value="2575" />
+      </div>
+      <div class="form-group">
+        <label for="sendingApp">Sending App</label>
+        <input id="sendingApp" placeholder="DICTAPHONE" value="DICTAPHONE" />
+      </div>
+      <div class="form-group">
+        <label for="receivingApp">Receiving App</label>
+        <input id="receivingApp" placeholder="HIS" value="HIS" />
+      </div>
+    </div>
+    <br />
+    <div class="actions-row">
+      <button class="btn btn-send" id="btnSend">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        Transmit HL7
+      </button>
+      <button class="btn btn-preview" id="btnPreview">Preview HL7 Message</button>
+    </div>
+    <pre id="hl7-preview"></pre>
+  </div>
+
+  <!-- Transmission Log -->
+  <div class="card">
+    <h2>Transmission Log</h2>
+    <div id="log"><em>No transmissions yet.</em></div>
+  </div>
+
+</div>
+
+<script>
+// ── Speech Recognition ──────────────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+
+const btnRecord = document.getElementById('btnRecord');
+const btnStop = document.getElementById('btnStop');
+const btnClear = document.getElementById('btnClear');
+const recIndicator = document.getElementById('recIndicator');
+const transcription = document.getElementById('transcription');
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  let finalTranscript = '';
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += t + ' ';
+      } else {
+        interim += t;
+      }
+    }
+    transcription.value = finalTranscript + interim;
+  };
+
+  recognition.onerror = (event) => {
+    log('Speech recognition error: ' + event.error, 'err');
+    if (event.error !== 'no-speech') stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) recognition.start(); // auto-restart on silence
+  };
+
+  btnRecord.addEventListener('click', () => {
+    finalTranscript = transcription.value;
+    recognition.start();
+    isRecording = true;
+    btnRecord.disabled = true;
+    btnStop.disabled = false;
+    recIndicator.classList.add('active');
+  });
+
+  btnStop.addEventListener('click', stopRecording);
+} else {
+  btnRecord.disabled = true;
+  log('Speech Recognition API not available in this browser.', 'err');
+}
+
+function stopRecording() {
+  if (recognition) recognition.stop();
+  isRecording = false;
+  btnRecord.disabled = false;
+  btnStop.disabled = true;
+  recIndicator.classList.remove('active');
+}
+
+btnClear.addEventListener('click', () => {
+  transcription.value = '';
+});
+
+// ── Report Status ───────────────────────────────────────────────
+let selectedStatus = 'final';
+document.querySelectorAll('.status-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedStatus = btn.dataset.status;
+  });
+});
+
+// ── Gather Form Data ────────────────────────────────────────────
+function gatherData() {
+  return {
+    patient: {
+      id: document.getElementById('patId').value,
+      firstName: document.getElementById('patFirst').value,
+      lastName: document.getElementById('patLast').value,
+      dob: document.getElementById('patDob').value.replace(/-/g, ''),
+      gender: document.getElementById('patGender').value,
+    },
+    visit: {
+      patientClass: document.getElementById('visitClass').value,
+      location: document.getElementById('visitLocation').value,
+      attendingId: document.getElementById('drId').value,
+      attendingFirstName: document.getElementById('drFirst').value,
+      attendingLastName: document.getElementById('drLast').value,
+    },
+    order: {},
+    transcription: transcription.value.trim(),
+    status: selectedStatus,
+    config: {
+      sendingApp: document.getElementById('sendingApp').value,
+      receivingApp: document.getElementById('receivingApp').value,
+    },
+    hl7Host: document.getElementById('hl7Host').value,
+    hl7Port: parseInt(document.getElementById('hl7Port').value, 10) || 2575,
+  };
+}
+
+// ── Preview ─────────────────────────────────────────────────────
+const previewEl = document.getElementById('hl7-preview');
+document.getElementById('btnPreview').addEventListener('click', async () => {
+  const data = gatherData();
+  if (!data.transcription) { alert('Please dictate or type clinical text first.'); return; }
+  try {
+    const res = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    previewEl.textContent = json.raw.replace(/\r/g, '\n');
+    previewEl.style.display = 'block';
+  } catch (e) {
+    log('Preview error: ' + e.message, 'err');
+  }
+});
+
+// ── Send HL7 ────────────────────────────────────────────────────
+document.getElementById('btnSend').addEventListener('click', async () => {
+  const data = gatherData();
+  if (!data.transcription) { alert('Please dictate or type clinical text first.'); return; }
+  if (!data.patient.id) { alert('Please enter a Patient ID (MRN).'); return; }
+
+  log('Sending HL7 ORU^R01 (' + selectedStatus.toUpperCase() + ') to ' + data.hl7Host + ':' + data.hl7Port + '...');
+  try {
+    const res = await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (json.success) {
+      log('ACK received (' + json.ackCode + ') &mdash; Control ID: ' + json.controlId, 'ok');
+    } else {
+      log('Transmission failed: ' + (json.error || json.ackCode || 'unknown'), 'err');
+    }
+  } catch (e) {
+    log('Network error: ' + e.message, 'err');
+  }
+});
+
+// ── Log helper ──────────────────────────────────────────────────
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  if (el.querySelector('em')) el.innerHTML = '';
+  const t = new Date().toLocaleTimeString();
+  el.innerHTML += '<div class="entry ' + (cls || '') + '"><span class="time">[' + t + ']</span> ' + msg + '</div>';
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
