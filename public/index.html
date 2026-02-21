@@ -153,6 +153,79 @@
       margin-bottom: 48px;
     }
 
+    /* Doctor badge / ID card — like the dictaphone display showing who is dictating */
+    .dr-badge {
+      width: 100%;
+      max-width: 340px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .dr-badge .badge-avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .dr-badge .badge-avatar svg { width: 26px; height: 26px; fill: rgba(255,255,255,0.7); }
+    .dr-badge .badge-info { flex: 1; text-align: left; }
+    .dr-badge .badge-name {
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .dr-badge .badge-number {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.78rem;
+      margin-top: 2px;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.05em;
+    }
+    .dr-badge .badge-role {
+      color: #93c5fd;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+    }
+    .dr-badge.not-set {
+      border-style: dashed;
+      cursor: pointer;
+    }
+    .dr-badge.not-set .badge-name {
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
+    }
+
+    /* Doctor identity strip on dictation screen (compact) */
+    .dr-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #0f2557;
+      color: white;
+      font-size: 0.78rem;
+    }
+    .dr-strip svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.5); flex-shrink: 0; }
+    .dr-strip .strip-name { font-weight: 700; }
+    .dr-strip .strip-badge {
+      font-family: 'Courier New', monospace;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.04em;
+    }
+
     /* Patient context banner (loaded from RIS via USB/worklist) */
     .patient-context {
       background: rgba(255,255,255,0.1);
@@ -629,6 +702,19 @@
     <div class="ris-title">RIS</div>
     <div class="ris-subtitle">Radiology Information System</div>
 
+    <!-- Doctor Badge / ID — like the dictaphone display -->
+    <div class="dr-badge not-set" id="drBadge" title="Tap to set up in Settings">
+      <div class="badge-avatar">
+        <!-- Person icon -->
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
+      <div class="badge-info">
+        <div class="badge-name" id="drBadgeName">No doctor set</div>
+        <div class="badge-number" id="drBadgeNumber">Tap Settings to enter badge No.</div>
+        <div class="badge-role" id="drBadgeRole"></div>
+      </div>
+    </div>
+
     <!-- Patient context (loaded when USB connects / study selected) -->
     <div class="patient-context" id="splashPatientCtx">
       <div class="ctx-label">Current Patient</div>
@@ -695,6 +781,12 @@
         <div class="pb-name" id="pbName">--</div>
         <div class="pb-detail" id="pbDetail">--</div>
       </div>
+    </div>
+    <!-- Doctor identity strip -->
+    <div class="dr-strip" id="drStrip">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="strip-name" id="stripDrName">--</span>
+      <span class="strip-badge" id="stripDrBadge"></span>
     </div>
     <div class="study-info" id="studyInfo"></div>
 
@@ -770,7 +862,11 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Provider (Attending)</div>
+      <div class="card-title">Doctor / Provider</div>
+      <div class="form-group">
+        <label>Badge Number</label>
+        <input id="drBadgeNo" placeholder="e.g. 74521" />
+      </div>
       <div class="form-group">
         <label>Attending ID</label>
         <input id="drId" placeholder="e.g. DR001" />
@@ -1331,8 +1427,51 @@ function addLog(msg, cls) {
   el.innerHTML = '<div class="entry ' + (cls || '') + '"><span class="time">[' + t + ']</span> ' + msg + '</div>' + el.innerHTML;
 }
 
+// ── Doctor Badge Display ────────────────────────────────────────
+// Updates the doctor identity on splash + dictation screens,
+// just like the LCD display on a physical dictaphone.
+function updateDrBadge() {
+  const first = document.getElementById('drFirst').value || '';
+  const last = document.getElementById('drLast').value || '';
+  const badgeNo = document.getElementById('drBadgeNo').value || '';
+  const drId = document.getElementById('drId').value || '';
+
+  const fullName = [last, first].filter(Boolean).join(', ');
+  const hasDoctor = fullName || badgeNo;
+
+  // Splash badge card
+  const badgeEl = document.getElementById('drBadge');
+  const badgeNameEl = document.getElementById('drBadgeName');
+  const badgeNumEl = document.getElementById('drBadgeNumber');
+  const badgeRoleEl = document.getElementById('drBadgeRole');
+
+  if (hasDoctor) {
+    badgeEl.classList.remove('not-set');
+    badgeNameEl.textContent = fullName ? 'Dr. ' + fullName : 'Badge ' + badgeNo;
+    badgeNumEl.textContent = badgeNo ? 'Badge No: ' + badgeNo : (drId ? 'ID: ' + drId : '');
+    badgeRoleEl.textContent = 'Attending Physician';
+  } else {
+    badgeEl.classList.add('not-set');
+    badgeNameEl.textContent = 'No doctor set';
+    badgeNumEl.textContent = 'Tap Settings to enter badge No.';
+    badgeRoleEl.textContent = '';
+  }
+
+  // Dictation strip
+  document.getElementById('stripDrName').textContent =
+    fullName ? 'Dr. ' + fullName : '--';
+  document.getElementById('stripDrBadge').textContent =
+    badgeNo ? 'Badge: ' + badgeNo : (drId || '');
+}
+
+// Tap badge on splash → go to Settings
+document.getElementById('drBadge').addEventListener('click', () => {
+  showScreen('screenSettings');
+  document.getElementById('drBadgeNo').focus();
+});
+
 // ── Persist settings to localStorage ────────────────────────────
-const SETTINGS_KEYS = ['hl7Host', 'hl7Port', 'sendingApp', 'receivingApp', 'drId', 'drFirst', 'drLast', 'dragonSchemeIos', 'dragonSchemeAndroid'];
+const SETTINGS_KEYS = ['hl7Host', 'hl7Port', 'sendingApp', 'receivingApp', 'drBadgeNo', 'drId', 'drFirst', 'drLast', 'dragonSchemeIos', 'dragonSchemeAndroid'];
 SETTINGS_KEYS.forEach(key => {
   const el = document.getElementById(key);
   if (!el) return;
@@ -1340,8 +1479,14 @@ SETTINGS_KEYS.forEach(key => {
   if (saved !== null) el.value = saved;
   el.addEventListener('change', () => {
     localStorage.setItem('dict_' + key, el.value);
+    updateDrBadge();
+  });
+  el.addEventListener('input', () => {
+    localStorage.setItem('dict_' + key, el.value);
+    updateDrBadge();
   });
 });
+updateDrBadge();
 
 // ── PWA Service Worker ──────────────────────────────────────────
 if ('serviceWorker' in navigator) {
