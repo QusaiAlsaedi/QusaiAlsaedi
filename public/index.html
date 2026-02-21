@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#1e40af" />
+  <meta name="theme-color" content="#0f172a" />
   <link rel="manifest" href="/manifest.json" />
   <title>Dictaphone</title>
   <style>
@@ -14,6 +14,7 @@
       --card: #ffffff;
       --primary: #1e40af;
       --primary-light: #3b82f6;
+      --primary-dark: #0f172a;
       --danger: #dc2626;
       --success: #16a34a;
       --warning: #d97706;
@@ -24,6 +25,8 @@
       --text-light: #94a3b8;
       --radius: 12px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --dragon-blue: #005eb8;
+      --dragon-dark: #003d7a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; }
@@ -40,6 +43,168 @@
       flex-direction: column;
       height: 100%;
     }
+
+    /* ── Screens ───────────────────────────────────── */
+    .screen {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* ═══════════════════════════════════════════════
+       SCREEN 1 — RIS Splash / Home
+       Shown when phone is plugged in via USB
+       ═══════════════════════════════════════════════ */
+    .splash-screen {
+      background: linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+      gap: 0;
+    }
+
+    /* USB connection status indicator */
+    .usb-status {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .usb-status.connected { color: #4ade80; }
+    .usb-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* RIS Logo area */
+    .ris-logo {
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .ris-logo svg { width: 64px; height: 64px; fill: white; }
+    .ris-title {
+      color: white;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .ris-subtitle {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.9rem;
+      font-weight: 400;
+      margin-bottom: 48px;
+    }
+
+    /* Patient context banner (loaded from RIS via USB/worklist) */
+    .patient-context {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 340px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      text-align: left;
+    }
+    .patient-context .ctx-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .patient-context .ctx-name {
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .patient-context .ctx-detail {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+    .patient-context .ctx-study {
+      color: #93c5fd;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .patient-context.empty {
+      text-align: center;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.85rem;
+    }
+
+    /* Dragon Dictation launch button */
+    .dragon-btn {
+      width: 100%;
+      max-width: 340px;
+      padding: 18px 24px;
+      border: none;
+      border-radius: 16px;
+      background: var(--dragon-blue);
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 24px rgba(0,94,184,0.4);
+      margin-bottom: 12px;
+    }
+    .dragon-btn:active { transform: scale(0.97); background: var(--dragon-dark); }
+    .dragon-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .dragon-btn svg { width: 28px; height: 28px; fill: white; }
+    .dragon-btn .dragon-label { display: flex; flex-direction: column; align-items: flex-start; }
+    .dragon-btn .dragon-label .main { font-size: 1.1rem; }
+    .dragon-btn .dragon-label .sub { font-size: 0.68rem; font-weight: 500; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .splash-nav {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .splash-nav-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .splash-nav-btn:active { background: rgba(255,255,255,0.2); }
+    .splash-nav-btn svg { width: 16px; height: 16px; fill: currentColor; vertical-align: -3px; margin-right: 4px; }
+
+    /* ═══════════════════════════════════════════════
+       SCREEN 2 — Worklist (patient/study picker)
+       ═══════════════════════════════════════════════ */
     .topbar {
       background: var(--primary);
       color: white;
@@ -48,53 +213,14 @@
       align-items: center;
       gap: 10px;
       flex-shrink: 0;
-      z-index: 10;
     }
     .topbar svg { width: 24px; height: 24px; fill: white; flex-shrink: 0; }
     .topbar h1 { font-size: 1.05rem; font-weight: 600; flex: 1; }
-    .topbar .settings-btn {
+    .topbar .back-link {
       background: none; border: none; cursor: pointer; padding: 4px;
     }
-    .topbar .settings-btn svg { width: 22px; height: 22px; fill: rgba(255,255,255,0.8); }
+    .topbar .back-link svg { width: 22px; height: 22px; fill: white; }
 
-    /* ── Screens ───────────────────────────────────── */
-    .screen {
-      display: none;
-      flex: 1;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: calc(70px + var(--safe-bottom));
-    }
-    .screen.active { display: flex; flex-direction: column; }
-
-    /* ── Bottom Nav ────────────────────────────────── */
-    .bottom-nav {
-      display: flex;
-      background: var(--card);
-      border-top: 1px solid var(--border);
-      padding-bottom: var(--safe-bottom);
-      flex-shrink: 0;
-      z-index: 10;
-    }
-    .nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      padding: 8px 4px;
-      font-size: 0.68rem;
-      font-weight: 500;
-      color: var(--muted);
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: color 0.15s;
-    }
-    .nav-item svg { width: 22px; height: 22px; fill: currentColor; }
-    .nav-item.active { color: var(--primary); }
-
-    /* ── Worklist Screen ──────────────────────────── */
     .search-bar {
       padding: 12px 16px;
       background: var(--card);
@@ -102,6 +228,7 @@
       position: sticky;
       top: 0;
       z-index: 5;
+      position: relative;
     }
     .search-bar input {
       width: 100%;
@@ -121,7 +248,6 @@
       width: 18px; height: 18px;
       fill: var(--text-light);
     }
-    .search-bar { position: relative; }
 
     .worklist { padding: 8px 0; }
     .wl-item {
@@ -172,7 +298,9 @@
     .wl-empty p { font-size: 0.9rem; }
     .wl-empty .sub { font-size: 0.78rem; margin-top: 6px; }
 
-    /* ── Dictation Screen ─────────────────────────── */
+    /* ═══════════════════════════════════════════════
+       SCREEN 3 — Dictation (Dragon return + edit)
+       ═══════════════════════════════════════════════ */
     .dictation-screen { padding: 0; }
 
     .patient-banner {
@@ -208,6 +336,25 @@
       gap: 12px;
     }
 
+    /* Dragon launch bar inside dictation */
+    .dragon-inline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--dragon-blue);
+      border-radius: var(--radius);
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .dragon-inline:active { background: var(--dragon-dark); }
+    .dragon-inline svg { width: 24px; height: 24px; fill: white; flex-shrink: 0; }
+    .dragon-inline .di-text { flex: 1; }
+    .dragon-inline .di-title { font-weight: 700; font-size: 0.9rem; }
+    .dragon-inline .di-sub { font-size: 0.72rem; opacity: 0.75; }
+    .dragon-inline .di-arrow { font-size: 1.2rem; opacity: 0.6; }
+
     #transcription {
       flex: 1;
       width: 100%;
@@ -222,6 +369,28 @@
       outline: none;
     }
     #transcription:focus { border-color: var(--primary-light); }
+
+    .text-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .text-actions button {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    .text-actions button svg { width: 16px; height: 16px; fill: currentColor; }
+    .text-actions button:active { background: var(--bg); }
 
     /* Status Pills */
     .status-bar {
@@ -248,61 +417,8 @@
     .status-btn[data-status="final"].selected        { background: var(--success); border-color: var(--success); }
     .status-btn[data-status="addendum"].selected     { background: #7c3aed; border-color: #7c3aed; }
 
-    /* Record Button -- big circular, phone-friendly */
-    .record-controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 8px 0;
-    }
-    .rec-btn {
-      width: 72px; height: 72px;
-      border-radius: 50%;
-      border: 4px solid var(--danger);
-      background: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-      position: relative;
-    }
-    .rec-btn .rec-inner {
-      width: 32px; height: 32px;
-      background: var(--danger);
-      border-radius: 50%;
-      transition: all 0.2s;
-    }
-    .rec-btn.recording .rec-inner {
-      width: 24px; height: 24px;
-      border-radius: 6px;
-    }
-    .rec-btn.recording {
-      border-color: var(--danger);
-      animation: rec-pulse 1.5s infinite;
-    }
-    @keyframes rec-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
-      50% { box-shadow: 0 0 0 12px rgba(220,38,38,0); }
-    }
-
-    .side-btn {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      border: none;
-      background: var(--bg);
-      color: var(--muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .side-btn svg { width: 20px; height: 20px; fill: currentColor; }
-
     /* Send bar */
     .send-bar {
-      padding: 10px 16px;
       display: flex;
       gap: 10px;
     }
@@ -330,23 +446,34 @@
       cursor: pointer;
     }
 
-    .recording-label {
-      text-align: center;
-      font-size: 0.78rem;
-      color: var(--danger);
-      font-weight: 600;
-      height: 18px;
+    /* ═══════════════════════════════════════════════
+       SCREEN 4 — Settings
+       ═══════════════════════════════════════════════ */
+    .settings-screen {
+      padding: 16px;
+      gap: 16px;
+      padding-bottom: calc(16px + var(--safe-bottom));
     }
-
-    /* ── Settings Screen ──────────────────────────── */
-    .settings-screen { padding: 16px; gap: 16px; }
+    .settings-screen .topbar-inline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .settings-screen .topbar-inline button {
+      background: none; border: none; cursor: pointer; padding: 4px;
+    }
+    .settings-screen .topbar-inline button svg { width: 22px; height: 22px; fill: var(--text); }
+    .settings-screen .topbar-inline h2 {
+      font-size: 1.1rem; font-weight: 600;
+    }
     .settings-screen .card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
     }
-    .settings-screen h2 {
+    .settings-screen .card-title {
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--muted);
@@ -373,7 +500,9 @@
       font-size: 0.9rem;
     }
 
-    /* ── Log Screen ───────────────────────────────── */
+    /* ═══════════════════════════════════════════════
+       SCREEN 5 — Transmission Log
+       ═══════════════════════════════════════════════ */
     .log-screen { padding: 0; }
     #log {
       padding: 12px 16px;
@@ -420,21 +549,11 @@
       word-break: break-all;
       overflow-x: auto;
     }
-    .modal-close {
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-      color: var(--muted);
-    }
 
     /* ── Toast ────────────────────────────────────── */
     .toast {
       position: fixed;
-      bottom: calc(80px + var(--safe-bottom));
+      bottom: calc(40px + var(--safe-bottom));
       left: 50%;
       transform: translateX(-50%) translateY(100px);
       background: var(--text);
@@ -455,14 +574,65 @@
 <body>
 
 <div class="app">
-  <!-- Top Bar -->
-  <div class="topbar">
-    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2z"/></svg>
-    <h1>Dictaphone</h1>
+
+  <!-- ═══ SCREEN 1: RIS Splash ═══ -->
+  <div class="screen splash-screen active" id="screenSplash">
+    <div class="usb-status" id="usbStatus">
+      <span class="usb-dot"></span>
+      <span id="usbLabel">Waiting for USB</span>
+    </div>
+
+    <!-- RIS Logo -->
+    <div class="ris-logo">
+      <!-- Radiology / RIS icon (cross + scan) -->
+      <svg viewBox="0 0 64 64"><path d="M32 4C16.536 4 4 16.536 4 32s12.536 28 28 28 28-12.536 28-28S47.464 4 32 4zm0 4c13.255 0 24 10.745 24 24S45.255 56 32 56 8 45.255 8 32 18.745 8 32 8zm-2 8v14H16v4h14v14h4V34h14v-4H34V16h-4z"/></svg>
+    </div>
+    <div class="ris-title">RIS</div>
+    <div class="ris-subtitle">Radiology Information System</div>
+
+    <!-- Patient context (loaded when USB connects / study selected) -->
+    <div class="patient-context" id="splashPatientCtx">
+      <div class="ctx-label">Current Patient</div>
+      <div class="ctx-name" id="splashCtxName">No patient loaded</div>
+      <div class="ctx-detail" id="splashCtxDetail">Select from worklist or connect via USB</div>
+      <div class="ctx-study" id="splashCtxStudy"></div>
+    </div>
+
+    <!-- Dragon Dictation Button -->
+    <button class="dragon-btn" id="btnDragonLaunch" disabled>
+      <!-- Microphone icon -->
+      <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2z"/></svg>
+      <span class="dragon-label">
+        <span class="sub">Dragon Medical One</span>
+        <span class="main">Dictation</span>
+      </span>
+    </button>
+
+    <div class="splash-nav">
+      <button class="splash-nav-btn" id="btnOpenWorklist">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        Worklist
+      </button>
+      <button class="splash-nav-btn" id="btnOpenSettings">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        Settings
+      </button>
+      <button class="splash-nav-btn" id="btnOpenLog">
+        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        Log
+      </button>
+    </div>
   </div>
 
-  <!-- Screen: Worklist -->
-  <div class="screen active" id="screenWorklist">
+  <!-- ═══ SCREEN 2: Worklist ═══ -->
+  <div class="screen" id="screenWorklist">
+    <div class="topbar">
+      <button class="back-link" id="wlBack">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+      <h1>Patient Worklist</h1>
+    </div>
     <div class="search-bar">
       <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       <input type="text" id="searchInput" placeholder="Search patient, MRN, accession..." />
@@ -471,12 +641,12 @@
       <div class="wl-empty">
         <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
         <p>No studies in worklist</p>
-        <p class="sub">Studies will appear when orders are received from RIS,<br>or add a patient manually from Settings.</p>
+        <p class="sub">Studies appear when orders arrive from RIS,<br>or add a patient manually from Settings.</p>
       </div>
     </div>
   </div>
 
-  <!-- Screen: Dictation -->
+  <!-- ═══ SCREEN 3: Dictation ═══ -->
   <div class="screen dictation-screen" id="screenDictation">
     <div class="patient-banner">
       <button class="back-btn" id="btnBack">
@@ -490,7 +660,32 @@
     <div class="study-info" id="studyInfo"></div>
 
     <div class="dictation-area">
-      <textarea id="transcription" placeholder="Tap the record button and start dictating..."></textarea>
+      <!-- Dragon re-launch inside dictation view -->
+      <div class="dragon-inline" id="btnDragonInline">
+        <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2z"/></svg>
+        <div class="di-text">
+          <div class="di-title">Dragon Medical One</div>
+          <div class="di-sub">Tap to launch dictation</div>
+        </div>
+        <span class="di-arrow">&rsaquo;</span>
+      </div>
+
+      <textarea id="transcription" placeholder="Dictated text from Dragon will appear here. You can also type or edit manually."></textarea>
+
+      <div class="text-actions">
+        <button id="btnClear">
+          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          Clear
+        </button>
+        <button id="btnUndo">
+          <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05 1.04-6.83 2.73L3 8v9h9l-2.83-2.83c1.28-1.23 3-2 4.83-2 3.04 0 5.63 2.14 6.32 5l2.36-.72C21.63 11.62 17.5 8 12.5 8z"/></svg>
+          Undo
+        </button>
+        <button id="btnPaste">
+          <svg viewBox="0 0 24 24"><path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/></svg>
+          Paste
+        </button>
+      </div>
 
       <div class="status-bar">
         <button class="status-btn" data-status="draft">Draft</button>
@@ -499,30 +694,24 @@
         <button class="status-btn" data-status="addendum">Addend.</button>
       </div>
 
-      <div class="recording-label" id="recLabel"></div>
-      <div class="record-controls">
-        <button class="side-btn" id="btnClear" title="Clear">
-          <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-        <button class="rec-btn" id="btnRec">
-          <div class="rec-inner"></div>
-        </button>
-        <button class="side-btn" id="btnUndo" title="Undo">
-          <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05 1.04-6.83 2.73L3 8v9h9l-2.83-2.83c1.28-1.23 3-2 4.83-2 3.04 0 5.63 2.14 6.32 5l2.36-.72C21.63 11.62 17.5 8 12.5 8z"/></svg>
-        </button>
-      </div>
-
-      <div class="send-bar" style="padding: 0;">
+      <div class="send-bar">
         <button class="btn-send" id="btnSend">Transmit HL7</button>
         <button class="btn-preview-sm" id="btnPreview">HL7</button>
       </div>
     </div>
   </div>
 
-  <!-- Screen: Settings -->
+  <!-- ═══ SCREEN 4: Settings ═══ -->
   <div class="screen settings-screen" id="screenSettings">
+    <div class="topbar-inline">
+      <button id="settingsBack">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <h2>Settings</h2>
+    </div>
+
     <div class="card">
-      <h2>HL7 Destination (RIS)</h2>
+      <div class="card-title">HL7 Destination (RIS)</div>
       <div class="form-group">
         <label>RIS Host</label>
         <input id="hl7Host" placeholder="e.g. 192.168.1.100" value="127.0.0.1" />
@@ -542,7 +731,7 @@
     </div>
 
     <div class="card">
-      <h2>Provider (Attending)</h2>
+      <div class="card-title">Provider (Attending)</div>
       <div class="form-group">
         <label>Attending ID</label>
         <input id="drId" placeholder="e.g. DR001" />
@@ -558,7 +747,19 @@
     </div>
 
     <div class="card">
-      <h2>Add Patient to Worklist</h2>
+      <div class="card-title">Dragon Medical One</div>
+      <div class="form-group">
+        <label>Dragon URL Scheme (iOS)</label>
+        <input id="dragonSchemeIos" value="nuaborddictation://" />
+      </div>
+      <div class="form-group">
+        <label>Dragon Intent URI (Android)</label>
+        <input id="dragonSchemeAndroid" value="intent://dictate#Intent;scheme=nuance;package=com.nuance.dragonmedicaloneapp;end" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Add Patient to Worklist</div>
       <div class="form-group">
         <label>Patient ID (MRN)</label>
         <input id="manPatId" />
@@ -595,26 +796,18 @@
     </div>
   </div>
 
-  <!-- Screen: Log -->
+  <!-- ═══ SCREEN 5: Transmission Log ═══ -->
   <div class="screen log-screen" id="screenLog">
+    <div class="topbar">
+      <button class="back-link" id="logBack">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      <h1>Transmission Log</h1>
+    </div>
     <div id="log"><div style="text-align:center; padding:40px; color:var(--text-light);">No transmissions yet.</div></div>
   </div>
 
-  <!-- Bottom Navigation -->
-  <div class="bottom-nav">
-    <button class="nav-item active" data-screen="screenWorklist">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-      Worklist
-    </button>
-    <button class="nav-item" data-screen="screenSettings">
-      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
-      Settings
-    </button>
-    <button class="nav-item" data-screen="screenLog">
-      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-      Log
-    </button>
-  </div>
 </div>
 
 <!-- HL7 Preview Modal -->
@@ -632,19 +825,18 @@
 
 <script>
 // ── Navigation ──────────────────────────────────────────────────
-const screens = document.querySelectorAll('.screen');
-const navItems = document.querySelectorAll('.nav-item');
-
 function showScreen(id) {
-  screens.forEach(s => s.classList.remove('active'));
-  navItems.forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelector('[data-screen="' + id + '"]')?.classList.add('active');
 }
 
-navItems.forEach(btn => {
-  btn.addEventListener('click', () => showScreen(btn.dataset.screen));
-});
+// Splash nav buttons
+document.getElementById('btnOpenWorklist').addEventListener('click', () => { loadWorklist(); showScreen('screenWorklist'); });
+document.getElementById('btnOpenSettings').addEventListener('click', () => showScreen('screenSettings'));
+document.getElementById('btnOpenLog').addEventListener('click', () => showScreen('screenLog'));
+document.getElementById('wlBack').addEventListener('click', () => showScreen('screenSplash'));
+document.getElementById('settingsBack').addEventListener('click', () => showScreen('screenSplash'));
+document.getElementById('logBack').addEventListener('click', () => showScreen('screenSplash'));
 
 // ── Toast ───────────────────────────────────────────────────────
 function toast(msg, type) {
@@ -653,6 +845,41 @@ function toast(msg, type) {
   el.className = 'toast ' + (type || '');
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── USB Connection Detection ────────────────────────────────────
+// Uses the Web USB API to detect when phone is plugged into workstation.
+// Falls back to treating the app as always "connected" if USB API not available.
+let usbConnected = false;
+
+function setUsbConnected(connected) {
+  usbConnected = connected;
+  const el = document.getElementById('usbStatus');
+  const label = document.getElementById('usbLabel');
+  if (connected) {
+    el.classList.add('connected');
+    label.textContent = 'USB Connected';
+  } else {
+    el.classList.remove('connected');
+    label.textContent = 'Waiting for USB';
+  }
+}
+
+if ('usb' in navigator) {
+  navigator.usb.getDevices().then(devices => {
+    if (devices.length > 0) setUsbConnected(true);
+  });
+  navigator.usb.addEventListener('connect', () => {
+    setUsbConnected(true);
+    toast('USB connected', 'ok');
+    loadWorklist();
+  });
+  navigator.usb.addEventListener('disconnect', () => {
+    setUsbConnected(false);
+  });
+} else {
+  // No Web USB — treat as always connected (phone accesses server over WiFi)
+  setUsbConnected(true);
 }
 
 // ── Worklist ────────────────────────────────────────────────────
@@ -665,9 +892,35 @@ async function loadWorklist(query) {
     const res = await fetch(url);
     worklistData = await res.json();
     renderWorklist();
+    updateSplashContext();
   } catch (e) {
     console.error('Worklist fetch error', e);
   }
+}
+
+function updateSplashContext() {
+  const btn = document.getElementById('btnDragonLaunch');
+  if (activeStudy) {
+    document.getElementById('splashCtxName').textContent = activeStudy.patientName || 'Unknown';
+    document.getElementById('splashCtxDetail').textContent =
+      'MRN: ' + (activeStudy.patientId || '--') + '  |  ' + (activeStudy.patientGender || '') + '  |  DOB: ' + (activeStudy.patientDob || '--');
+    document.getElementById('splashCtxStudy').textContent = activeStudy.studyDescription || '';
+    btn.disabled = false;
+  } else if (worklistData.length > 0) {
+    // Auto-select first pending study
+    const pending = worklistData.find(w => w.status !== 'dictated') || worklistData[0];
+    selectStudy(pending);
+  } else {
+    document.getElementById('splashCtxName').textContent = 'No patient loaded';
+    document.getElementById('splashCtxDetail').textContent = 'Open Worklist to select a patient';
+    document.getElementById('splashCtxStudy').textContent = '';
+    btn.disabled = true;
+  }
+}
+
+function selectStudy(item) {
+  activeStudy = item;
+  updateSplashContext();
 }
 
 function renderWorklist() {
@@ -680,7 +933,8 @@ function renderWorklist() {
     const initials = ((item.patientFirstName || '')[0] || '') + ((item.patientLastName || '')[0] || '');
     const badge = item.status === 'dictated' ? '<span class="wl-badge dictated">Dictated</span>' : '<span class="wl-badge pending">Pending</span>';
     const time = item.scheduledTime ? formatHL7Time(item.scheduledTime) : '';
-    return '<div class="wl-item" data-acc="' + (item.accession || '') + '">' +
+    const selected = activeStudy && activeStudy.accession === item.accession ? ' style="border-left:4px solid var(--primary-light);"' : '';
+    return '<div class="wl-item" data-acc="' + escAttr(item.accession || '') + '"' + selected + '>' +
       '<div class="wl-avatar">' + (initials.toUpperCase() || '?') + '</div>' +
       '<div class="wl-info"><div class="wl-name">' + escHtml(item.patientName || 'Unknown') + '</div>' +
       '<div class="wl-detail">MRN: ' + escHtml(item.patientId || '--') + ' &bull; ' + escHtml(item.studyDescription || 'Study') + '</div></div>' +
@@ -691,7 +945,11 @@ function renderWorklist() {
     el.addEventListener('click', () => {
       const acc = el.dataset.acc;
       const item = worklistData.find(w => w.accession === acc);
-      if (item) openDictation(item);
+      if (item) {
+        selectStudy(item);
+        showScreen('screenSplash');
+        toast('Patient: ' + item.patientName, 'ok');
+      }
     });
   });
 }
@@ -707,6 +965,10 @@ function escHtml(s) {
   return d.innerHTML;
 }
 
+function escAttr(s) {
+  return s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // Search
 let searchTimer;
 document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -714,13 +976,136 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
   searchTimer = setTimeout(() => loadWorklist(e.target.value), 300);
 });
 
-// Initial load + auto-refresh every 10s
+// Auto-load worklist on start and refresh every 10s
 loadWorklist();
 setInterval(() => {
-  if (document.getElementById('screenWorklist').classList.contains('active')) loadWorklist();
+  if (document.getElementById('screenSplash').classList.contains('active') ||
+      document.getElementById('screenWorklist').classList.contains('active')) {
+    loadWorklist();
+  }
 }, 10000);
 
-// ── Dictation ───────────────────────────────────────────────────
+// ── Dragon Medical One Integration ──────────────────────────────
+// Dragon is launched via URL scheme (iOS) or Intent URI (Android).
+// After dictation, the doctor returns to this app and pastes or
+// the text is received via clipboard / share intent.
+
+function detectPlatform() {
+  const ua = navigator.userAgent || '';
+  if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'other';
+}
+
+function launchDragon() {
+  if (!activeStudy) {
+    toast('Select a patient first', 'err');
+    return;
+  }
+
+  // Open dictation screen so text can land there on return
+  openDictation(activeStudy);
+
+  const platform = detectPlatform();
+  const iosScheme = document.getElementById('dragonSchemeIos')?.value || 'nuaborddictation://';
+  const androidIntent = document.getElementById('dragonSchemeAndroid')?.value ||
+    'intent://dictate#Intent;scheme=nuance;package=com.nuance.dragonmedicaloneapp;end';
+
+  if (platform === 'ios') {
+    window.location.href = iosScheme;
+  } else if (platform === 'android') {
+    window.location.href = androidIntent;
+  } else {
+    // Desktop / fallback — use built-in Web Speech API instead
+    startWebSpeech();
+  }
+}
+
+document.getElementById('btnDragonLaunch').addEventListener('click', launchDragon);
+document.getElementById('btnDragonInline').addEventListener('click', () => {
+  const platform = detectPlatform();
+  const iosScheme = document.getElementById('dragonSchemeIos')?.value || 'nuaborddictation://';
+  const androidIntent = document.getElementById('dragonSchemeAndroid')?.value ||
+    'intent://dictate#Intent;scheme=nuance;package=com.nuance.dragonmedicaloneapp;end';
+
+  if (platform === 'ios') {
+    window.location.href = iosScheme;
+  } else if (platform === 'android') {
+    window.location.href = androidIntent;
+  } else {
+    startWebSpeech();
+  }
+});
+
+// ── Web Speech API Fallback (desktop / when Dragon not available) ──
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+let finalTranscript = '';
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += t + ' ';
+      } else {
+        interim += t;
+      }
+    }
+    document.getElementById('transcription').value = finalTranscript + interim;
+  };
+
+  recognition.onerror = (event) => {
+    addLog('Speech error: ' + event.error, 'err');
+    if (event.error !== 'no-speech') stopWebSpeech();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) recognition.start();
+  };
+}
+
+function startWebSpeech() {
+  if (!recognition) {
+    toast('Speech not supported', 'err');
+    return;
+  }
+  finalTranscript = document.getElementById('transcription').value;
+  recognition.start();
+  isRecording = true;
+  document.getElementById('btnDragonInline').style.background = 'var(--danger)';
+  document.querySelector('#btnDragonInline .di-title').textContent = 'Recording...';
+  document.querySelector('#btnDragonInline .di-sub').textContent = 'Tap to stop';
+  document.getElementById('btnDragonInline').onclick = stopWebSpeech;
+}
+
+function stopWebSpeech() {
+  if (recognition) recognition.stop();
+  isRecording = false;
+  document.getElementById('btnDragonInline').style.background = '';
+  document.querySelector('#btnDragonInline .di-title').textContent = 'Dragon Medical One';
+  document.querySelector('#btnDragonInline .di-sub').textContent = 'Tap to launch dictation';
+  document.getElementById('btnDragonInline').onclick = () => {
+    const platform = detectPlatform();
+    if (platform === 'ios' || platform === 'android') {
+      const scheme = platform === 'ios'
+        ? (document.getElementById('dragonSchemeIos')?.value || 'nuaborddictation://')
+        : (document.getElementById('dragonSchemeAndroid')?.value || 'intent://dictate#Intent;scheme=nuance;package=com.nuance.dragonmedicaloneapp;end');
+      window.location.href = scheme;
+    } else {
+      startWebSpeech();
+    }
+  };
+}
+
+// ── Dictation Screen ────────────────────────────────────────────
 const transcription = document.getElementById('transcription');
 let undoStack = [];
 
@@ -734,75 +1119,13 @@ function openDictation(item) {
   transcription.value = '';
   undoStack = [];
   showScreen('screenDictation');
-  // hide bottom nav in dictation
-  document.querySelector('.bottom-nav').style.display = 'none';
 }
 
 document.getElementById('btnBack').addEventListener('click', () => {
-  stopRecording();
-  activeStudy = null;
-  document.querySelector('.bottom-nav').style.display = 'flex';
-  showScreen('screenWorklist');
-  loadWorklist();
+  if (isRecording) stopWebSpeech();
+  showScreen('screenSplash');
+  updateSplashContext();
 });
-
-// ── Speech Recognition ──────────────────────────────────────────
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition = null;
-let isRecording = false;
-
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-US';
-
-  let finalTranscript = '';
-
-  recognition.onresult = (event) => {
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const t = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscript += t + ' ';
-      } else {
-        interim += t;
-      }
-    }
-    transcription.value = finalTranscript + interim;
-  };
-
-  recognition.onerror = (event) => {
-    addLog('Speech error: ' + event.error, 'err');
-    if (event.error !== 'no-speech') stopRecording();
-  };
-
-  recognition.onend = () => {
-    if (isRecording) recognition.start();
-  };
-
-  document.getElementById('btnRec').addEventListener('click', () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      finalTranscript = transcription.value;
-      recognition.start();
-      isRecording = true;
-      document.getElementById('btnRec').classList.add('recording');
-      document.getElementById('recLabel').textContent = 'Recording...';
-    }
-  });
-} else {
-  document.getElementById('btnRec').style.opacity = '0.3';
-  document.getElementById('recLabel').textContent = 'Speech not supported';
-}
-
-function stopRecording() {
-  if (recognition) recognition.stop();
-  isRecording = false;
-  document.getElementById('btnRec').classList.remove('recording');
-  document.getElementById('recLabel').textContent = '';
-}
 
 document.getElementById('btnClear').addEventListener('click', () => {
   if (transcription.value) undoStack.push(transcription.value);
@@ -812,6 +1135,18 @@ document.getElementById('btnClear').addEventListener('click', () => {
 document.getElementById('btnUndo').addEventListener('click', () => {
   if (undoStack.length > 0) {
     transcription.value = undoStack.pop();
+  }
+});
+
+document.getElementById('btnPaste').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      transcription.value += text;
+      toast('Pasted from clipboard', 'ok');
+    }
+  } catch (e) {
+    toast('Clipboard access denied', 'err');
   }
 });
 
@@ -935,7 +1270,6 @@ document.getElementById('btnAddManual').addEventListener('click', async () => {
     });
     const json = await res.json();
     toast('Added: ' + json.accession, 'ok');
-    // Clear fields
     ['manPatId','manPatFirst','manPatLast','manPatDob','manStudyDesc','manAccession'].forEach(id => document.getElementById(id).value = '');
     loadWorklist();
   } catch (e) {
@@ -952,12 +1286,14 @@ function addLog(msg, cls) {
 }
 
 // ── Persist settings to localStorage ────────────────────────────
-const SETTINGS_KEYS = ['hl7Host', 'hl7Port', 'sendingApp', 'receivingApp', 'drId', 'drFirst', 'drLast'];
+const SETTINGS_KEYS = ['hl7Host', 'hl7Port', 'sendingApp', 'receivingApp', 'drId', 'drFirst', 'drLast', 'dragonSchemeIos', 'dragonSchemeAndroid'];
 SETTINGS_KEYS.forEach(key => {
+  const el = document.getElementById(key);
+  if (!el) return;
   const saved = localStorage.getItem('dict_' + key);
-  if (saved !== null) document.getElementById(key).value = saved;
-  document.getElementById(key).addEventListener('change', () => {
-    localStorage.setItem('dict_' + key, document.getElementById(key).value);
+  if (saved !== null) el.value = saved;
+  el.addEventListener('change', () => {
+    localStorage.setItem('dict_' + key, el.value);
   });
 });
 
