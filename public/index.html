@@ -35,6 +35,45 @@
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
+      /* ── Screen capture / copy prevention ── */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    /* Allow text selection only inside the transcription textarea */
+    #transcription {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+    }
+
+    /* ── Security overlay — shown on background / screen capture ── */
+    .security-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--primary-dark);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      color: white;
+    }
+    .security-overlay.active { display: flex; }
+    .security-overlay svg { width: 64px; height: 64px; fill: rgba(255,255,255,0.3); }
+    .security-overlay .lock-msg {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .security-overlay .lock-sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
     }
 
     /* ── App Shell ─────────────────────────────────── */
@@ -820,6 +859,13 @@
   </div>
 </div>
 
+<!-- Security Overlay — blocks screen when app goes to background or capture detected -->
+<div class="security-overlay" id="securityOverlay">
+  <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+  <div class="lock-msg">Protected Health Information</div>
+  <div class="lock-sub">Screen capture is disabled.<br>Tap to return to the app.</div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1301,6 +1347,98 @@ SETTINGS_KEYS.forEach(key => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SECURITY — Screen capture / recording prevention
+// ═══════════════════════════════════════════════════════════════
+
+const secOverlay = document.getElementById('securityOverlay');
+
+// 1. Blank the screen when app goes to background (task switcher,
+//    screen recording preview, app-switch screenshots on iOS/Android).
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    secOverlay.classList.add('active');
+  } else {
+    secOverlay.classList.remove('active');
+  }
+});
+
+// Also handle iOS-specific pause/resume events
+window.addEventListener('pagehide', () => secOverlay.classList.add('active'));
+window.addEventListener('pageshow', () => secOverlay.classList.remove('active'));
+
+// 2. Tap overlay to dismiss when returning to the app
+secOverlay.addEventListener('click', () => {
+  secOverlay.classList.remove('active');
+});
+
+// 3. Block screen capture API (getDisplayMedia)
+if (navigator.mediaDevices) {
+  const origGetDisplayMedia = navigator.mediaDevices.getDisplayMedia;
+  navigator.mediaDevices.getDisplayMedia = function() {
+    return Promise.reject(new DOMException('Screen capture is disabled for PHI protection.', 'NotAllowedError'));
+  };
+}
+
+// 4. Block right-click context menu (prevents "Save as", "Inspect")
+document.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  return false;
+});
+
+// 5. Block common screenshot/dev-tools keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // PrintScreen
+  if (e.key === 'PrintScreen') {
+    e.preventDefault();
+    secOverlay.classList.add('active');
+    setTimeout(() => secOverlay.classList.remove('active'), 2000);
+    return false;
+  }
+  // Cmd/Ctrl + Shift + S (screenshot), Cmd/Ctrl + Shift + I/J/C (devtools)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey &&
+      ['s','i','j','c'].includes(e.key.toLowerCase())) {
+    e.preventDefault();
+    return false;
+  }
+  // Cmd/Ctrl + S (save page)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    return false;
+  }
+  // F12 (devtools)
+  if (e.key === 'F12') {
+    e.preventDefault();
+    return false;
+  }
+});
+
+// 6. Block drag-and-drop of images/content out of the app
+document.addEventListener('dragstart', (e) => {
+  e.preventDefault();
+  return false;
+});
+
+// 7. Session inactivity auto-lock (lock after 5 min idle)
+let inactivityTimer;
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(() => {
+    secOverlay.classList.add('active');
+    // Clear transcription from memory on lock
+    if (document.getElementById('transcription').value) {
+      toast('Session locked — tap to resume', '');
+    }
+  }, INACTIVITY_TIMEOUT);
+}
+
+['touchstart', 'touchmove', 'click', 'keydown', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, resetInactivityTimer, { passive: true });
+});
+resetInactivityTimer();
 </script>
 </body>
 </html>

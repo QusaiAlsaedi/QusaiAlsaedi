@@ -22,6 +22,40 @@ const PORT = process.env.PORT || 3000;
 const WORKLIST_PORT = process.env.WORKLIST_PORT || 2576;
 
 app.use(express.json({ limit: '2mb' }));
+
+// ── Security headers (PHI protection) ───────────────────────────
+app.use((req, res, next) => {
+  // Prevent embedding in iframes (clickjacking)
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+
+  // Block screen capture, camera, geolocation via Permissions-Policy
+  res.setHeader('Permissions-Policy',
+    'display-capture=(), screen-wake-lock=(self), camera=(), geolocation=(), microphone=(self)'
+  );
+
+  // Content Security Policy — restrict what can run
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+  ].join('; '));
+
+  // Prevent caching of PHI on disk
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Worklist endpoints ──────────────────────────────────────────
