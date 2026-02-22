@@ -1,0 +1,96 @@
+version: "3.9"
+
+# Integration Full-Body Monitor - Docker Compose
+# Run: docker compose up -d
+# Default admin: admin / ChangeMe123! (change IMMEDIATELY in production)
+
+services:
+  # ─────────────────────────────
+  # PostgreSQL
+  # ─────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ihm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: monitor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-monitor_dev_password}
+      POSTGRES_DB: monitor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"   # loopback only - not exposed externally
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────
+  # Backend (FastAPI)
+  # ─────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ihm-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://monitor:${POSTGRES_PASSWORD:-monitor_dev_password}@postgres:5432/monitor"
+      SECRET_KEY: ${SECRET_KEY:-CHANGE-ME-IN-PRODUCTION-USE-256-BIT-RANDOM}
+      CORS_ORIGINS: '["http://localhost:3000","http://frontend","https://monitor.hospital.local"]'
+      AGENT_API_KEYS: ${AGENT_API_KEYS:-CHANGE-ME-AGENT-KEY-1,CHANGE-ME-AGENT-KEY-2}
+      DEBUG: ${DEBUG:-false}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      DEFAULT_PROBE_INTERVAL_SECONDS: ${PROBE_INTERVAL:-30}
+      DEFAULT_ACK_TIMEOUT_SECONDS: ${ACK_TIMEOUT:-60}
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "127.0.0.1:8000:8000"   # loopback - Nginx proxies externally
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────
+  # Frontend (React + Nginx)
+  # ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ihm-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+  # ─────────────────────────────
+  # Agent (optional - for local demo)
+  # Override config via volume mount
+  # ─────────────────────────────
+  # agent:
+  #   build:
+  #     context: ./agent
+  #     dockerfile: Dockerfile
+  #   container_name: ihm-agent-local
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - backend
+  #   volumes:
+  #     - ./agent/config.yaml:/etc/ihm-agent/config.yaml:ro
+  #   network_mode: host   # Required to monitor host services
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: ihm-network

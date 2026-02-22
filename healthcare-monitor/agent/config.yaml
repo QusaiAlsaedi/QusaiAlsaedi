@@ -1,0 +1,55 @@
+# Integration Monitor Agent Configuration
+# Install on each server that runs an interface engine, HIS, or RIS
+# Copy to /etc/ihm-agent/config.yaml (Linux) or C:\ihm-agent\config.yaml (Windows)
+
+# ============================================================
+# REQUIRED: Identity and backend connection
+# ============================================================
+server_name: "RIS-APP-01"          # Unique name for this server
+backend_url: "https://monitor.hospital.local"
+api_key: "CHANGE-ME-AGENT-KEY-1"   # Match AGENT_API_KEYS in backend .env
+verify_ssl: true                    # Set false only in dev with self-signed certs
+
+# ============================================================
+# Metrics collection
+# ============================================================
+metrics_interval_seconds: 60        # How often to push CPU/mem/disk/services
+disk_path: "/"                      # Linux: "/" | Windows: "C:\\"
+
+# List of services to monitor status for
+# Linux: systemd unit names (without .service)
+# Windows: Windows Service internal names
+services:
+  - rhapsody                        # Rhapsody integration engine
+  - mirth                           # Mirth Connect
+  # - ensemble                      # InterSystems Ensemble (use actual service name)
+  # - mssqlserver                   # SQL Server
+  # - postgresql-14                 # PostgreSQL
+  # - w3svc                         # IIS (Windows)
+
+# ============================================================
+# Log file monitoring (Option B: log-based HL7 detection)
+# ============================================================
+# Add one entry per log file this agent should tail.
+# The agent uses built-in regex patterns for common engines.
+# Custom patterns can be added below.
+
+log_poll_interval_seconds: 5        # How often to check for new log lines
+
+log_files:
+  - path: "/var/log/rhapsody/rhapsody.log"
+    encoding: "utf-8"
+    # engine_type: rhapsody         # Hint for pattern matching (optional)
+
+  - path: "/var/log/mirth/mirth.log"
+    encoding: "utf-8"
+
+  # Windows examples:
+  # - path: 'C:\Rhapsody\logs\log.txt'
+  #   encoding: "utf-8"
+  # - path: 'C:\Program Files\Mirth Connect\logs\mirth.log'
+  #   encoding: "utf-8"
+
+# Optional: Associate all HL7 messages seen by this agent with a specific flow ID
+# (Get the flow ID from the backend after creating a flow in /api/hl7/flows)
+# flow_id: "550e8400-e29b-41d4-a716-446655440000"

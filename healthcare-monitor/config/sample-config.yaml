@@ -1,0 +1,149 @@
+# Integration Monitor - Sample Configuration
+# Load this into the DB via the API or the seed script below.
+# This file is documentation / reference - the actual config lives in the DB.
+
+# ============================================================
+# Sample Endpoints (add via POST /api/endpoints or UI)
+# ============================================================
+endpoints:
+  - name: "RIS MLLP Listener"
+    host: "192.168.1.100"
+    port: 6661
+    protocol: "mllp"
+    check_interval_seconds: 30
+    timeout_seconds: 5
+    tags: ["ris", "mllp", "prod"]
+    metadata:
+      app: "RadiologyIS"
+      env: "production"
+      vendor: "Vendor-A"
+
+  - name: "HIS MLLP Listener"
+    host: "192.168.1.50"
+    port: 6661
+    protocol: "mllp"
+    check_interval_seconds: 30
+    timeout_seconds: 5
+    tags: ["his", "mllp", "prod"]
+
+  - name: "Interface Engine Admin UI"
+    host: "192.168.1.200"
+    port: 8443
+    protocol: "https"
+    check_interval_seconds: 60
+    timeout_seconds: 10
+    tags: ["engine", "admin"]
+
+  - name: "RIS Database"
+    host: "192.168.1.101"
+    port: 1433
+    protocol: "tcp"
+    check_interval_seconds: 60
+    timeout_seconds: 5
+    tags: ["ris", "database"]
+
+  - name: "HIS Database"
+    host: "192.168.1.51"
+    port: 1433
+    protocol: "tcp"
+    check_interval_seconds: 60
+    timeout_seconds: 5
+    tags: ["his", "database"]
+
+# ============================================================
+# Sample HL7 Flows (add via POST /api/hl7/flows)
+# ============================================================
+hl7_flows:
+  - name: "HIS -> RIS Order Flow (ORM)"
+    sending_application: "HIS"
+    sending_facility: "HOSPITAL"
+    receiving_application: "RADIOLOGY_RIS"
+    receiving_facility: "RADIOLOGY"
+    message_types: ["ORM", "ORR"]
+    ack_timeout_seconds: 60
+    transport: "mllp"
+
+  - name: "RIS -> HIS Result Flow (ORU)"
+    sending_application: "RADIOLOGY_RIS"
+    sending_facility: "RADIOLOGY"
+    receiving_application: "HIS"
+    receiving_facility: "HOSPITAL"
+    message_types: ["ORU"]
+    ack_timeout_seconds: 120
+    transport: "mllp"
+
+  - name: "ADT Admission Notifications"
+    sending_application: "HIS"
+    sending_facility: "HOSPITAL"
+    receiving_application: "RADIOLOGY_RIS"
+    receiving_facility: "RADIOLOGY"
+    message_types: ["ADT"]
+    ack_timeout_seconds: 30
+    transport: "mllp"
+
+# ============================================================
+# Sample Log Parse Rules (add via POST /api/hl7/rules)
+# ============================================================
+log_parse_rules:
+  - name: "Rhapsody outbound sent"
+    engine_type: "rhapsody"
+    log_pattern: '(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})\s+\w+\s+\[.*?\]\s+Sent message\s+(\S+)\s+\(([A-Z]+\^?[A-Z0-9]*)\)'
+    timestamp_group: 1
+    timestamp_format: "%Y/%m/%d %H:%M:%S"
+    control_id_group: 2
+    message_type_group: 3
+    direction_default: "outbound"
+    example_line: "2024/02/21 14:05:23 INFO  [OutputCommPoint|TCP-RIS] Sent message MSG001 (ORM^O01)"
+
+  - name: "Rhapsody ACK received"
+    engine_type: "rhapsody"
+    log_pattern: '(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})\s+\w+\s+\[.*?\]\s+Received ACK\s+\(([A-Z]{2})\)\s+for\s+(\S+)'
+    timestamp_group: 1
+    timestamp_format: "%Y/%m/%d %H:%M:%S"
+    ack_code_group: 2
+    control_id_group: 3
+    direction_default: "inbound_ack"
+    example_line: "2024/02/21 14:05:24 INFO  [InputCommPoint|ACK-RIS] Received ACK (AA) for MSG001"
+
+  - name: "Mirth raw MSH outbound"
+    engine_type: "mirth"
+    log_pattern: 'MSH\|[\^~\\&]+\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|[^|]*\|[^|]*\|([A-Z]+\^?[A-Z0-9]*)\|([^|\r\n]+)\|'
+    control_id_group: 6
+    message_type_group: 5
+    direction_default: "outbound"
+    example_line: "MSH|^~\\&|HIS|HOSP|RIS|RADIOLOGY|20240221140523||ORM^O01|MSG001|P|2.4"
+
+  - name: "Mirth raw MSA ACK"
+    engine_type: "mirth"
+    log_pattern: 'MSA\|([A-Z]{2})\|([^|\r\n]+)'
+    ack_code_group: 1
+    control_id_group: 2
+    direction_default: "inbound_ack"
+    example_line: "MSA|AA|MSG001|Message accepted"
+
+# ============================================================
+# Agent config for each server (each server gets its own file)
+# ============================================================
+agent_configs:
+  - server_name: "RIS-APP-01"
+    backend_url: "https://monitor.hospital.local"
+    api_key: "CHANGE-ME-AGENT-KEY-RIS-APP-01"
+    disk_path: "C:\\"   # Windows
+    services:
+      - rhapsody
+      - mssqlserver
+      - w3svc
+    log_files:
+      - path: 'C:\Rhapsody\logs\rhapsody.log'
+        encoding: "utf-8"
+
+  - server_name: "HIS-APP-01"
+    backend_url: "https://monitor.hospital.local"
+    api_key: "CHANGE-ME-AGENT-KEY-HIS-APP-01"
+    disk_path: "/"   # Linux
+    services:
+      - mirth
+      - postgresql-14
+    log_files:
+      - path: "/var/log/mirth-connect/mirth.log"
+        encoding: "utf-8"

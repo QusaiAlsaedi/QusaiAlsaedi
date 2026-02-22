@@ -1,0 +1,5 @@
+psutil==5.9.8
+aiohttp==3.9.5
+pyyaml==6.0.1
+# Windows only (install separately on Windows):
+# pywin32==306
