@@ -28,6 +28,9 @@ frontend/.cache/
 # Docker volumes
 postgres_data/
 
+# SQLite dev database
+*.db
+
 # Logs (may contain PHI)
 *.log
 logs/
