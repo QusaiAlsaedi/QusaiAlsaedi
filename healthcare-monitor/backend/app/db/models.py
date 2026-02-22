@@ -8,9 +8,11 @@ from typing import Optional, List
 
 from sqlalchemy import (
     String, Integer, Boolean, Float, BigInteger, Text, DateTime,
-    ForeignKey, UniqueConstraint, CheckConstraint, ARRAY, Index
+    ForeignKey, UniqueConstraint, CheckConstraint, Index, JSON, Uuid
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+# Use SQLAlchemy-portable types so models work with both SQLite (dev) and Postgres (prod)
+PG_UUID = Uuid   # Uuid stores as VARCHAR on SQLite, native UUID on Postgres
+JSONB = JSON     # JSON works on both; Postgres JSONB features not needed for schema compat
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -31,7 +33,7 @@ def _now() -> datetime:
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="viewer")
@@ -55,7 +57,7 @@ class Endpoint(Base):
         UniqueConstraint("host", "port", name="uq_endpoint_host_port"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     port: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -80,9 +82,9 @@ class Endpoint(Base):
 class Probe(Base):
     __tablename__ = "probes"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False
+        PG_UUID(), ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False
     )
     probed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -105,7 +107,7 @@ class Probe(Base):
 class ServerMetric(Base):
     __tablename__ = "server_metrics"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     server_name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)
     cpu_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -129,7 +131,7 @@ class ServerMetric(Base):
 class HL7Flow(Base):
     __tablename__ = "hl7_flows"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     sending_application: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     sending_facility: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -158,7 +160,7 @@ class HL7Message(Base):
         Index("ix_hl7_status_detected", "status", "detected_at"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     message_control_id: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     message_type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     event_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -176,7 +178,7 @@ class HL7Message(Base):
     ack_received_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     ack_latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     flow_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("hl7_flows.id"), nullable=True
+        PG_UUID(), ForeignKey("hl7_flows.id"), nullable=True
     )
     log_source_file: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     log_line_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -191,7 +193,7 @@ class HL7Message(Base):
 class HL7Ack(Base):
     __tablename__ = "hl7_acks"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     message_control_id: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     ack_code: Mapped[str] = mapped_column(String(10), nullable=False)
     ack_datetime: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -208,7 +210,7 @@ class HL7Ack(Base):
 class Alert(Base):
     __tablename__ = "alerts"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     severity: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
@@ -220,10 +222,10 @@ class Alert(Base):
     acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     acknowledged_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        PG_UUID(), ForeignKey("users.id"), nullable=True
     )
     resolved_by: Mapped[Optional[uuid.UUID]] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        PG_UUID(), ForeignKey("users.id"), nullable=True
     )
     target_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     target_id: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -246,9 +248,9 @@ class Alert(Base):
 class Evidence(Base):
     __tablename__ = "evidence"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     alert_id: Mapped[uuid.UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False, index=True
+        PG_UUID(), ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     evidence_type: Mapped[str] = mapped_column(String(50), nullable=False)
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -264,7 +266,7 @@ class Evidence(Base):
 class AlertRule(Base):
     __tablename__ = "alert_rules"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     rule_type: Mapped[str] = mapped_column(String(50), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -282,7 +284,7 @@ class AlertRule(Base):
 class LogParseRule(Base):
     __tablename__ = "log_parse_rules"
 
-    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(PG_UUID(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     engine_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     log_pattern: Mapped[str] = mapped_column(Text, nullable=False)
