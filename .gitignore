@@ -1,5 +1,28 @@
 node_modules/
 .env
+
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+*.so
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Build / TRT artifacts
+*.engine
+*.plan
+*.onnx
+
+# Logs
+*.log
+logs/
+metrics/
+
+# OS
+.DS_Store
+Thumbs.db
