@@ -1,0 +1,84 @@
+# Drone Perception System — Default Configuration
+# Override individual keys in a mission-specific config file.
+# Usage: python -m drone_perception.main --config configs/sar_mission.yaml
+
+system:
+  name: "drone-perception-v1"
+  mission_type: "sar"            # sar | inspection | awareness
+  log_level: "INFO"
+  log_dir: "/var/log/drone_perception"
+
+camera:
+  source: 0                      # integer: V4L2 index; string: GStreamer pipeline
+  width: 1280
+  height: 720
+  fps: 30
+  gstreamer_csi: true            # use nvarguscamerasrc on Jetson if available
+
+network:
+  input_width: 1280
+  input_height: 736              # must be divisible by 32
+  engine_path: "weights/yolov9s_drone_fp16.engine"
+  onnx_path:   "weights/yolov9s_drone_sim.onnx"
+  fp16: true
+  int8: false
+  warmup_runs: 15
+
+preprocessing:
+  clahe_clip_limit: 2.0
+  clahe_tile_grid: [8, 8]
+  low_light_threshold: 60       # mean luminance < this → CLAHE applied
+  blur_alert_threshold: 0.6
+
+detection:
+  nms_iou_threshold: 0.45
+  # Per-class thresholds (see detector.py for full list)
+  confidence_thresholds:
+    person_standing:   0.25
+    person_crouching:  0.25
+    person_prone:      0.20     # SAR-critical — very aggressive
+    dog_cat:           0.35
+    large_mammal:      0.35
+    car_sedan:         0.40
+    quad_consumer:     0.50
+    quad_micro:        0.50
+
+tracking:
+  high_conf_threshold: 0.50
+  low_conf_threshold:  0.10
+  iou_high: 0.50
+  iou_low:  0.30
+  min_hits:  3
+  max_age:   30                  # frames before track deletion
+  allow_human_reid: false        # set true only with operator authorisation
+
+smoothing:
+  alpha: 0.4
+  lock_frames:   5
+  unlock_frames: 8
+  max_stale_frames: 60
+
+privacy:
+  blur_method: "pixelate"       # pixelate | gaussian
+  blur_block_size: 16
+  audit_log: "/var/log/drone_perception/audit.jsonl"
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+
+health:
+  fps_alert_threshold: 25.0
+  stage_stall_threshold_s: 3.0
+  memory_log_interval_s: 5.0
+  gpu_mem_alert_fraction: 0.90
+
+degradation:
+  hold_frames: 30
+  recovery_frames: 90
+  levels:
+    NORMAL:   [1280, 736]
+    DEGRADED: [960,  544]
+    STRESSED: [640,  384]
+    CRITICAL: [480,  256]
