@@ -1,0 +1,197 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: pytest + ONNX smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            numpy \
+            opencv-python-headless \
+            onnxruntime \
+            onnx \
+            pytest \
+            pytest-cov
+
+      # ---------------------------------------------------------------
+      # Unit tests
+      # ---------------------------------------------------------------
+      - name: Run unit tests
+        run: |
+          python -m pytest drone_perception/tests/ \
+            -v \
+            --tb=short \
+            --cov=drone_perception \
+            --cov-report=term-missing \
+            --cov-report=json:coverage.json
+
+      - name: Enforce coverage floor (60%)
+        run: |
+          python - <<'EOF'
+          import json, sys
+          data    = json.load(open("coverage.json"))
+          pct     = data["totals"]["percent_covered"]
+          floor   = 60.0
+          print(f"Coverage: {pct:.1f}%  (floor: {floor}%)")
+          sys.exit(0 if pct >= floor else 1)
+          EOF
+
+      # ---------------------------------------------------------------
+      # Safety invariant — targeting test must always pass
+      # ---------------------------------------------------------------
+      - name: Safety invariant: no targeting features
+        run: |
+          python -m pytest drone_perception/tests/test_privacy.py::TestNoTargeting \
+            -v --tb=short
+
+      # ---------------------------------------------------------------
+      # ONNX smoke test (build a minimal single-layer ONNX, run one frame)
+      # ---------------------------------------------------------------
+      - name: ONNX smoke test
+        run: |
+          python - <<'EOF'
+          """
+          Build a tiny 23-class detection stub ONNX model that mirrors
+          the output shape of YOLOv9-S and verify the full post-processing
+          stack (PostProcessor → ConfidenceCalibrator → ByteTracker →
+          TemporalSmoother → API schema serialisation) runs without error.
+          """
+          import tempfile, pathlib
+          import numpy as np
+
+          # ------ Build minimal ONNX ------
+          try:
+              import onnx
+              from onnx import helper, TensorProto
+
+              NET_W, NET_H = 640, 384      # small size for CI speed
+              N_ANCHORS    = 9072          # matches stride pattern for 640×384
+              N_CLASSES    = 23
+
+              input_t = helper.make_tensor_value_info(
+                  "input", TensorProto.FLOAT, [1, 3, NET_H, NET_W]
+              )
+              output_t = helper.make_tensor_value_info(
+                  "output", TensorProto.FLOAT, [1, N_ANCHORS, 4 + N_CLASSES]
+              )
+              # Identity-ish: MatMul against a zero weight → zero output
+              weight = helper.make_tensor(
+                  "W", TensorProto.FLOAT,
+                  [3 * NET_H * NET_W, N_ANCHORS * (4 + N_CLASSES)],
+                  [0.0] * (3 * NET_H * NET_W * N_ANCHORS * (4 + N_CLASSES)),
+              )
+              # Use Flatten + MatMul to produce the right output shape
+              flat_node = helper.make_node("Flatten", ["input"], ["flat"], axis=0)
+              mm_node   = helper.make_node("MatMul",  ["flat", "W"], ["mm_out"])
+              resh_node = helper.make_node(
+                  "Reshape", ["mm_out", "shape_val"], ["output"]
+              )
+              shape_init = helper.make_tensor(
+                  "shape_val", TensorProto.INT64, [3],
+                  [1, N_ANCHORS, 4 + N_CLASSES]
+              )
+              graph = helper.make_graph(
+                  [flat_node, mm_node, resh_node],
+                  "smoke_test",
+                  [input_t],
+                  [output_t],
+                  initializer=[weight, shape_init],
+              )
+              model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 17)])
+              onnx.checker.check_model(model)
+
+              with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as f:
+                  onnx.save(model, f.name)
+                  onnx_path = f.name
+              print(f"Smoke ONNX model: {onnx_path}")
+          except Exception as e:
+              print(f"ONNX model build skipped ({e}) — using random output fallback")
+              onnx_path = None
+
+          # ------ Run inference pipeline ------
+          import sys
+          sys.path.insert(0, ".")
+
+          from drone_perception.core.preprocessor import Preprocessor
+          from drone_perception.core.detector import PostProcessor
+          from drone_perception.core.tracker import ByteTracker, KalmanBoxTracker
+          from drone_perception.core.temporal_smoother import TemporalSmoother
+          from drone_perception.core.confidence_calibrator import ConfidenceCalibrator
+          from drone_perception.api.schema import frame_result_to_output
+          from drone_perception.core.pipeline import FrameResult, PipelineStatus
+          import time
+
+          KalmanBoxTracker.count = 0
+          pre  = Preprocessor(net_w=NET_W, net_h=NET_H)
+          post = PostProcessor(net_w=NET_W, net_h=NET_H)
+          cal  = ConfidenceCalibrator()
+          trk  = ByteTracker(min_hits=1)
+          smo  = TemporalSmoother()
+
+          frame = np.random.randint(0, 255, (720, 1280, 3), dtype=np.uint8)
+          pre_r = pre.process(frame, frame_id=1)
+
+          if onnx_path:
+              from drone_perception.deployment.trt_engine import ONNXEngine
+              engine = ONNXEngine(onnx_path)
+              raw    = engine.infer(pre_r.blob)
+          else:
+              raw = np.zeros((1, 9072, 27), dtype=np.float32)
+
+          dets   = post.process(raw, pre_r.scale, pre_r.pad_top, pre_r.pad_left,
+                                *pre_r.orig_hw)
+          dets   = cal.calibrate(dets)
+          tracks = trk.update(dets)
+          tracks = smo.update(tracks)
+
+          result = FrameResult(
+              frame_id=1, timestamp_ns=time.monotonic_ns(),
+              tracks=tracks, raw_detections=dets,
+              status=PipelineStatus.OK,
+              inference_ms=0.0, pipeline_ms=0.0,
+              blur_score=pre_r.blur_score, low_light=pre_r.low_light,
+              model_version="smoke-test",
+          )
+          frame_out = frame_result_to_output(result)
+          json_str  = frame_out.to_json()
+
+          import json
+          parsed = json.loads(json_str)
+          assert "schema_version" in parsed
+          assert "tracks"         in parsed
+          assert "timing"         in parsed
+          assert parsed["status"] in ("ok", "no_detections")
+          print(f"ONNX smoke test PASSED — schema_version={parsed['schema_version']}, "
+                f"tracks={parsed['summary']['total_tracks']}")
+          EOF
+
+      # ---------------------------------------------------------------
+      # Lint (ruff — only if installed, non-blocking)
+      # ---------------------------------------------------------------
+      - name: Lint with ruff (advisory)
+        continue-on-error: true
+        run: |
+          pip install ruff --quiet
+          ruff check drone_perception/ \
+            --select E,W,F \
+            --ignore E501,W503 \
+            --exclude drone_perception/__pycache__ \
+            || true

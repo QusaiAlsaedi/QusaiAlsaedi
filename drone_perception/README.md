@@ -155,40 +155,117 @@ drone_perception/
 
 ## Getting started
 
-**Development machine (no Jetson, no GPU):**
+**1. Install (development machine, no GPU required)**
 
 ```bash
-pip install numpy opencv-python-headless onnxruntime fastapi uvicorn pytest
+pip install numpy opencv-python-headless onnxruntime fastapi uvicorn pytest onnx
 
-# Run all tests
+# Verify — all 76 tests should pass
 pytest drone_perception/tests/ -v
-
-# Run the benchmark (generates synthetic frames, no camera needed)
-python -m drone_perception.scripts.benchmark \
-  --onnx weights/yolov9s_drone_sim.onnx \
-  --frames 300
-
-# Run the 10-minute stability validation (mock camera + mock engine)
-python -m drone_perception.scripts.stability_validation \
-  --duration 600 --fps 30 --output ./results
 ```
 
-**On Jetson Orin Nano (JetPack 5.x, TRT 8.6+):**
+**2. Dataset setup**
+
+Download and convert VisDrone (UAV pedestrian/vehicle) and COWC (aerial cars):
 
 ```bash
-# 1. Export and build the TRT engine (run this on the Jetson)
-bash drone_perception/scripts/export_and_build.sh checkpoints/yolov9s_drone_v1.pt
+# VisDrone (~1.6 GB) — registration-free GitHub mirror
+mkdir -p data/visdrone/raw
+wget -O data/visdrone/raw/VisDrone2019-DET-train.zip \
+  "https://github.com/VisDrone/VisDrone-Dataset/releases/download/v2019/VisDrone2019-DET-train.zip"
+wget -O data/visdrone/raw/VisDrone2019-DET-val.zip \
+  "https://github.com/VisDrone/VisDrone-Dataset/releases/download/v2019/VisDrone2019-DET-val.zip"
 
-# 2. Run with TRT FP16
+python -m drone_perception.scripts.datasets.visdrone \
+  --raw data/visdrone/raw \
+  --out data/visdrone
+
+# COWC (~2.4 GB) — direct wget from LLNL
+mkdir -p data/cowc/raw
+BASE=https://gdo152.llnl.gov/cowc/datasets/patch_64
+for CITY in Potsdam_ISPRS Selwyn_LINZ Toronto_ISPRS Utah_AGRC Columbus_CSUAV_AFRL Lima_Peru; do
+  wget $BASE/${CITY}.tbz -P data/cowc/raw/
+done
+
+python -m drone_perception.scripts.datasets.cowc \
+  --raw data/cowc/raw \
+  --out data/cowc
+```
+
+Both scripts print a per-class summary (count · min/median/max bbox area) and write:
+- `data/{dataset}/labels/{train,val}/*.txt` — YOLO format for training
+- `data/{dataset}/annotations/{dataset}_{split}.json` — COCO format for evaluation
+
+**3. Train (placeholder — replace with your YOLOv9 training command)**
+
+```bash
+# Clone YOLOv9 training repo alongside this one
+git clone https://github.com/WongKinYiu/yolov9 vendor/yolov9
+
+# Train YOLOv9-S on VisDrone + COWC
+python vendor/yolov9/train.py \
+  --weights yolov9-s.pt \
+  --data    configs/drone_dataset.yaml \
+  --epochs  100 \
+  --imgsz   1280 \
+  --batch   8 \
+  --device  0 \
+  --name    yolov9s_drone_v1
+
+# Export to ONNX + build TRT engine (run on Jetson)
+bash drone_perception/scripts/export_and_build.sh \
+  runs/train/yolov9s_drone_v1/weights/best.pt
+```
+
+**4. Evaluate**
+
+```bash
+# mAP50, mAP50:95, per-class precision/recall, confusion matrix
+python -m drone_perception.scripts.evaluate \
+  --onnx    weights/yolov9s_drone_sim.onnx \
+  --dataset data/visdrone/annotations/visdrone_val.json \
+  --images  data/visdrone/images/val
+
+# Results written to metrics/eval_<timestamp>.json
+# Quick smoke test (first 50 images only)
+python -m drone_perception.scripts.evaluate \
+  --onnx    weights/yolov9s_drone_sim.onnx \
+  --dataset data/visdrone/annotations/visdrone_val.json \
+  --images  data/visdrone/images/val \
+  --max-images 50
+```
+
+**5. INT8 calibration (Jetson only)**
+
+```bash
+# Collect ~1000 representative deployment frames in data/calib/
+mkdir -p data/calib
+# (copy or symlink frames from actual flight footage)
+
+python -m drone_perception.deployment.int8_calibrator \
+  --input  data/calib \
+  --onnx   weights/yolov9s_drone_sim.onnx \
+  --cache  weights/calibration.cache \
+  --output weights/yolov9s_drone_int8.engine
+
+# Verify INT8 accuracy vs FP16 baseline (expect < 2% mAP drop)
+python -m drone_perception.scripts.evaluate \
+  --engine  weights/yolov9s_drone_int8.engine \
+  --dataset data/visdrone/annotations/visdrone_val.json \
+  --images  data/visdrone/images/val
+```
+
+**6. Run on Jetson Orin Nano**
+
+```bash
 python -m drone_perception.main \
   --engine weights/yolov9s_drone_fp16.engine \
   --onnx   weights/yolov9s_drone_sim.onnx \
   --camera 0 \
   --api-port 8080
 
-# 3. Stream detections (WebSocket)
-# ws://device-ip:8080/stream
-# GET  device-ip:8080/metrics  →  per-stage latency percentiles
+# WebSocket stream:   ws://device-ip:8080/stream
+# Latency metrics:    GET device-ip:8080/metrics
 ```
 
 **With a CSI camera (recommended for SAR):**

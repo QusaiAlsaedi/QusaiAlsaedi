@@ -150,7 +150,23 @@ if TRT_AVAILABLE:
             if self._int8 and builder.platform_has_fast_int8:
                 config.set_flag(trt.BuilderFlag.INT8)
                 if self._cal_cache:
-                    config.int8_calibrator = _DummyCalibrator(self._cal_cache)
+                    from .int8_calibrator import DatasetInt8Calibrator
+                    # Calibration frames expected in data/calib/ — see int8_calibrator.py
+                    import pathlib
+                    calib_dir = pathlib.Path("data/calib")
+                    if calib_dir.exists():
+                        config.int8_calibrator = DatasetInt8Calibrator(
+                            calib_dir=calib_dir,
+                            cache_file=self._cal_cache,
+                        )
+                        logger.info("INT8 calibrator: DatasetInt8Calibrator (%s)", calib_dir)
+                    else:
+                        logger.warning(
+                            "INT8 requested but data/calib/ not found. "
+                            "Run: python -m drone_perception.deployment.int8_calibrator "
+                            "--input data/calib --onnx %s --cache %s",
+                            self._onnx_path, self._cal_cache,
+                        )
                 logger.info("INT8 mode enabled")
 
             serialised = builder.build_serialized_network(network, config)
@@ -218,28 +234,7 @@ if TRT_AVAILABLE:
 
     # ------------------------------------------------------------------
 
-    class _DummyCalibrator(trt.IInt8EntropyCalibrator2):
-        """Placeholder INT8 calibrator — replace with real dataset iterator."""
-
-        def __init__(self, cache_file: str):
-            super().__init__()
-            self._cache = cache_file
-
-        def get_batch_size(self) -> int:
-            return 1
-
-        def get_batch(self, names):
-            return None  # signals end of calibration data
-
-        def read_calibration_cache(self):
-            if os.path.exists(self._cache):
-                with open(self._cache, "rb") as f:
-                    return f.read()
-            return None
-
-        def write_calibration_cache(self, cache):
-            with open(self._cache, "wb") as f:
-                f.write(cache)
+    # _DummyCalibrator removed — use DatasetInt8Calibrator from int8_calibrator.py
 
 
 # ---------------------------------------------------------------------------
